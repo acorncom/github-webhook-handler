@@ -1,8 +1,6 @@
 const EventEmitter = require('events').EventEmitter
     , inherits     = require('util').inherits
     , crypto       = require('crypto')
-    , bl           = require('bl')
-    , bufferEq     = require('buffer-equal-constant-time')
 
 
 function signBlob (key, blob) {
@@ -65,19 +63,14 @@ function create (options) {
     if (events && events.indexOf(event) == -1)
       return hasError('X-Github-Event is not acceptable')
 
-    req.pipe(bl(function (err, data) {
-      if (err) {
-        return hasError(err.message)
-      }
-
       var obj
-      var computedSig = new Buffer(signBlob(options.secret, data))
+      var computedSig = signBlob(options.secret, JSON.stringify(req.body))
 
-      if (!bufferEq(new Buffer(sig), computedSig))
+      if (sig != computedSig)
         return hasError('X-Hub-Signature does not match blob signature')
 
       try {
-        obj = JSON.parse(data.toString())
+        obj = req.body
       } catch (e) {
         return hasError(e)
       }
@@ -96,7 +89,6 @@ function create (options) {
 
       handler.emit(event, emitData)
       handler.emit('*', emitData)
-    }))
   }
 }
 
